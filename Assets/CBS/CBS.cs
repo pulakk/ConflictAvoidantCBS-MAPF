@@ -103,21 +103,22 @@ public class CBS : MonoBehaviour{
 				Debug.Log("Solution Found.");
 				break;
 			}
-			else if(curConflicts.Count == 1){
-				Conflict conflict = curConflicts[0];
-				foreach(int agentID in conflict.agents){
-					// copy constraints
-					List<State>[] newConstraints = new List<State>[nAgents];
-					for(int i=0;i<newConstraints.Length;i++){
-						newConstraints[i] = new List<State>(curNode.constraints[i]);
-					}
-					// add new constraint
-					newConstraints[agentID].Add(new State(conflict.node, conflict.time));
+			else if(curConflicts.Count > 0){
+				foreach(Conflict conflict in curConflicts){
+					foreach(int agentID in conflict.agents){
+						// copy constraints
+						List<State>[] newConstraints = new List<State>[nAgents];
+						for(int i=0;i<newConstraints.Length;i++){
+							newConstraints[i] = new List<State>(curNode.constraints[i]);
+						}
+						// add new constraint
+						newConstraints[agentID].Add(new State(conflict.node, conflict.time));
 
-					List<List<Node>> newSolution = GetSolution(newConstraints);
-					int newCost = GetSolutionCost(newSolution);
-					CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
-					OPEN.Add(newNode);
+						List<List<Node>> newSolution = GetSolution(newConstraints);
+						int newCost = GetSolutionCost(newSolution);
+						CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
+						OPEN.Add(newNode);
+					}
 				}
 			}
 		}
@@ -142,34 +143,55 @@ public class CBS : MonoBehaviour{
 	}
 
 	List<Conflict> GetConflicts(List<List<Node>> paths){
-		List<Node> curNodes = new List<Node>();
 		List<Conflict> conflicts = new List<Conflict>();
 
 		bool conflictFound = false;
+		bool agentLeft=false;
 
-		int t = 0; // time step
-		do{
-			curNodes.Clear();
+		for(int t=0;!conflictFound;t++,agentLeft=false){
+			for(int i=0;i<paths.Count && !conflictFound;i++){
+				for(int j=0;j<paths.Count && !conflictFound;j++){
+					if(i!=j && t < paths[i].Count && t < paths[j].Count){
+						/* CASE 1 
+							0: A B C F
+							1: D E C G
+								   |
+								   ------ conflict (same node at same time)
+						
+						 */
+						if(paths[i][t] == paths[j][t]){
+							List<int> curAgents = new List<int> ();
+							curAgents.Add(i);
+							curAgents.Add(j);
+							conflicts.Add(new Conflict(curAgents, paths[i][t], t+1));
+							conflictFound = true;
+						}
 
-			// add all nodes of current 
-			// time step left in each path
-			foreach(List<Node> path in paths)
-				if(t < path.Count)
-					curNodes.Add(path[t]);
+						/* CASE 2
+							0: A B C E
+							1: D C B F
+								 | |
+								 ------- conflict (crossing each other)
+						 */
+						if(t+1 < paths[i].Count && t+1 < paths[j].Count){
+							if(paths[i][t] == paths[j][t+1] && paths[i][t+1] == paths[j][t]){
+								List<int> curAgents = new List<int> ();
+								curAgents.Add(i);
+								conflicts.Add(new Conflict(curAgents, paths[i][t+1], t+2));
 
-			// check for conflicts
-			for(int i=0;i<curNodes.Count && !conflictFound;i++)
-				for(int j=0;j<curNodes.Count && !conflictFound;j++)
-					if(i!=j && curNodes[i]==curNodes[j]){
-						List<int> curAgents = new List<int> ();
-						curAgents.Add(i);
-						curAgents.Add(j);
-						conflicts.Add(new Conflict(curAgents, curNodes[i], t+1));
-						conflictFound = true;
+								curAgents = new List<int> ();
+								curAgents.Add(j);
+								conflicts.Add(new Conflict(curAgents, paths[j][t+1], t+2));
+								conflictFound = true;
+							}
+						}
+						agentLeft = true;
 					}
-				
-			t += 1;
-		}while(curNodes.Count>1 && !conflictFound);
+				}
+			}
+			
+			if(!agentLeft) break;
+		}
 
 		return conflicts;
 	}
