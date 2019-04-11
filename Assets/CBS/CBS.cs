@@ -11,12 +11,14 @@ public class CBS : MonoBehaviour{
 	Vector3[] agentPositions;
 
 	private bool cbsComplete=true;
+	public int maxAgents;
 	int nAgents;
 
 	Grid grid;
 
 	void Awake() {
 		nAgents = agents.Length<targets.Length?agents.Length:targets.Length;
+		nAgents = nAgents<maxAgents?nAgents:maxAgents; // less than max agents
 
 		agentPositions = new Vector3[agents.Length];
 		for(int i=0;i<agentPositions.Length;i++)
@@ -64,6 +66,7 @@ public class CBS : MonoBehaviour{
 		CTNode node = nodes[0];
 		for (int i = 1; i < nodes.Count; i ++) 
 			if (nodes[i].cost <= node.cost) 
+				if(nodes[i].GetConstraintsCount() <= node.GetConstraintsCount())
 					node = nodes[i];
 
 		return node;

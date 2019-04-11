@@ -68,4 +68,13 @@ public class CTNode{
 
 		cost = _cost;
 	}
+
+
+	public int GetConstraintsCount(){
+		int count = 0;
+		for(int i=0;i<constraints.Length;i++){
+			count+= constraints[i].Count;
+		}
+		return count;
+	}
 }
