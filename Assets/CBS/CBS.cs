@@ -65,9 +65,11 @@ public class CBS : MonoBehaviour{
 	static CTNode GetMinCostNode(List<CTNode> nodes){
 		CTNode node = nodes[0];
 		for (int i = 1; i < nodes.Count; i ++) 
-			if (nodes[i].cost <= node.cost) 
-				if(nodes[i].GetConstraintsCount() <= node.GetConstraintsCount())
-					node = nodes[i];
+			if (nodes[i].cost < node.cost) 
+				node = nodes[i];
+			else if(nodes[i].cost == node.cost 
+			&& nodes[i].GetConstraintsCount() < node.GetConstraintsCount())
+				node = nodes[i];
 
 		return node;
 	}
@@ -130,16 +132,21 @@ public class CBS : MonoBehaviour{
 	}
 
 	IEnumerator FlyDrones(){
-		for(int t=0,count=0;;t++,count=0){
-			for(int i=0;i<grid.paths.Count;i++){
-				// time steps left
+		int maxTimeStep = 0;
+		foreach(List<Node> path in grid.paths)
+			if(path.Count > maxTimeStep) 
+				maxTimeStep = path.Count;
+
+		// for each time step
+		for(int t=0;t<maxTimeStep;t++){ 
+			// for each agent
+			for(int i=0;i<nAgents;i++){
 				if(t < grid.paths[i].Count){
-					count++;
 					agents[i].position = grid.paths[i][t].worldPosition;
 				}
 			}
 			yield return new WaitForSeconds(waitTime);
-			if(count==0)break;
+			// yield return 0;
 		}
 		
 		cbsComplete = true;
