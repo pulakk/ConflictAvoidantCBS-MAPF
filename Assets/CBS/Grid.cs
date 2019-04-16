@@ -15,6 +15,16 @@ public class Grid : MonoBehaviour {
 	int gridSizeX, gridSizeY;
 	public List<Color> colors = new List<Color> ();
 
+	public Node GetRandomNode(){
+		for(int i=0;i<10;i++){
+			int col = Random.Range(0, grid.GetLength(0));
+			int row = Random.Range(0, grid.GetLength(1));
+			if(grid[col,row].walkable)
+				return grid[col,row];
+		}
+		return grid[0,0];
+	}
+
 	public Node GetNode(int x, int y){
 		return grid[x,gridSizeY-y-1];
 	}

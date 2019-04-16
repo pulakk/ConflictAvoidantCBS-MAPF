@@ -6,9 +6,8 @@ public class CBS : MonoBehaviour{
 
 	public Transform[] agents;
     public Transform[] targets;
-	float waitTime = 1.0f;
 
-	Vector3[] agentPositions;
+	// Vector3[] agentPositions;
 
 	private bool cbsComplete=true;
 	public int maxAgents;
@@ -20,9 +19,9 @@ public class CBS : MonoBehaviour{
 		nAgents = agents.Length<targets.Length?agents.Length:targets.Length;
 		nAgents = nAgents<maxAgents?nAgents:maxAgents; // less than max agents
 
-		agentPositions = new Vector3[agents.Length];
-		for(int i=0;i<agentPositions.Length;i++)
-			agentPositions[i] = new Vector3(agents[i].position.x, agents[i].position.y, agents[i].position.z);
+		// agentPositions = new Vector3[agents.Length];
+		// for(int i=0;i<agentPositions.Length;i++)
+		// 	agentPositions[i] = new Vector3(agents[i].position.x, agents[i].position.y, agents[i].position.z);
 
 
 		// get the whole grid layout
@@ -35,8 +34,8 @@ public class CBS : MonoBehaviour{
 			if(cbsComplete){
 				cbsComplete = false;
 				// reset agent positions
-				for(int i=0;i<agents.Length;i++)
-					agents[i].position = new Vector3(agentPositions[i].x, agentPositions[i].y, agentPositions[i].z);
+				// for(int i=0;i<agents.Length;i++)
+				// 	agents[i].position = new Vector3(agentPositions[i].x, agentPositions[i].y, agentPositions[i].z);
 				StartCoroutine(StepCBS());
 			}
 		}
@@ -48,6 +47,8 @@ public class CBS : MonoBehaviour{
 			grid.ResetNodes();
 			// find min path with the given constraints
 			List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, constraints[i]);
+			// if(path.Count==0)
+			// 	return null;
 			solution.Add(path);
 		}
 		return solution;
@@ -78,8 +79,8 @@ public class CBS : MonoBehaviour{
 		grid.paths = null;
 
 		List<CTNode> OPEN = new List<CTNode> ();
+		List<Conflict> curConflicts =  new List<Conflict>();
 		
-
 		/* empty constraints */
 		List<State>[] emptyConstraints = new List<State> [nAgents];
 		for(int i=0;i<emptyConstraints.Length;i++){
@@ -89,25 +90,27 @@ public class CBS : MonoBehaviour{
 		List<List<Node>> solution = GetSolution(emptyConstraints);
 		int cost = GetSolutionCost(solution);
 		
-		CTNode root = new CTNode(emptyConstraints, solution, cost);
+		CTNode curNode = new CTNode(emptyConstraints, solution, cost);
 
-		OPEN.Add(root);
+		OPEN.Add(curNode);
 
 		while(OPEN.Count > 0){
-
-			CTNode curNode = GetMinCostNode(OPEN);
+			curNode = GetMinCostNode(OPEN);
 			OPEN.Remove(curNode);
 
 			grid.paths = curNode.solution;
-			yield return new WaitForSeconds(waitTime); // show for a few seconds
 
-			List<Conflict> curConflicts = GetConflicts(curNode.solution);
+			curConflicts = GetConflicts(curNode.solution);
+
+			// yield return new WaitForSeconds(1.0f); // show for a few seconds
+			yield return 0;
 			Debug.Log(curNode.cost);
 			if(curConflicts.Count == 0){
 				// solution found
-				Debug.Log("Solution Found.");
+				Debug.Log("Solution Found!");
 				break;
 			}
+
 			else if(curConflicts.Count > 0){
 				foreach(Conflict conflict in curConflicts){
 					foreach(int agentID in conflict.agents){
@@ -116,10 +119,16 @@ public class CBS : MonoBehaviour{
 						for(int i=0;i<newConstraints.Length;i++){
 							newConstraints[i] = new List<State>(curNode.constraints[i]);
 						}
+
 						// add new constraint
 						newConstraints[agentID].Add(new State(conflict.node, conflict.time));
 
 						List<List<Node>> newSolution = GetSolution(newConstraints);
+						if(newSolution==null){
+							Debug.Log("No solution found!");
+							yield break;
+						}
+
 						int newCost = GetSolutionCost(newSolution);
 						CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
 						OPEN.Add(newNode);
@@ -127,26 +136,43 @@ public class CBS : MonoBehaviour{
 				}
 			}
 		}
-		
+
 		StartCoroutine(FlyDrones());
 	}
 
 	IEnumerator FlyDrones(){
-		int maxTimeStep = 0;
+		int minTimeStep = int.MaxValue;
+		int MAXSTEPS = 30;
+		float speed = grid.nodeRadius*130/MAXSTEPS;
+
 		foreach(List<Node> path in grid.paths)
-			if(path.Count > maxTimeStep) 
-				maxTimeStep = path.Count;
+			if(path.Count != 0 && path.Count < minTimeStep) 
+				minTimeStep = path.Count;
+
+		if(minTimeStep == int.MaxValue){
+			Debug.Log("Deadlock!");
+			yield break;
+		} 
 
 		// for each time step
-		for(int t=0;t<maxTimeStep;t++){ 
+		for(int t=0;t<minTimeStep;t++){ 
 			// for each agent
+			for(int step=0;step<MAXSTEPS;step++){
+				for(int i=0;i<nAgents;i++)
+					if(t < grid.paths[i].Count) 
+						agents[i].position = Vector3.MoveTowards(agents[i].position, grid.paths[i][t].worldPosition, speed*Time.deltaTime);
+				yield return 0;
+			}
+
 			for(int i=0;i<nAgents;i++){
-				if(t < grid.paths[i].Count){
+				if(t < grid.paths[i].Count)
 					agents[i].position = grid.paths[i][t].worldPosition;
+				if(t == grid.paths[i].Count-1){
+					// generate new node
+					Vector3 newNodePos = grid.GetRandomNode().worldPosition;
+					targets[i].position = new Vector3(newNodePos.x, newNodePos.y, newNodePos.z);
 				}
 			}
-			yield return new WaitForSeconds(waitTime);
-			// yield return 0;
 		}
 		
 		cbsComplete = true;
