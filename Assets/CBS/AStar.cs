@@ -37,6 +37,8 @@ public class AStar{
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
 
+		targetNode.visible = true;
+		
 		/* open set contains 
 		the list of nodes to be visited*/
 		List<Node> openSet = new List<Node>();
@@ -106,6 +108,7 @@ public class AStar{
 			path.Add(currentNode);
 			currentNode = currentNode.parent;
 		}
+		path.Add(startNode);
 		path.Reverse();
 
 		return path;

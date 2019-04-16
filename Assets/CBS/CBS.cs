@@ -19,25 +19,16 @@ public class CBS : MonoBehaviour{
 		nAgents = agents.Length<targets.Length?agents.Length:targets.Length;
 		nAgents = nAgents<maxAgents?nAgents:maxAgents; // less than max agents
 
-		// agentPositions = new Vector3[agents.Length];
-		// for(int i=0;i<agentPositions.Length;i++)
-		// 	agentPositions[i] = new Vector3(agents[i].position.x, agents[i].position.y, agents[i].position.z);
-
-
 		// get the whole grid layout
 		grid = GetComponent<Grid> ();
 	}
 
 	void Update() {
 		// main algorithm
-		if (Input.GetKeyDown (KeyCode.Return)) {
-			if(cbsComplete){
-				cbsComplete = false;
-				// reset agent positions
-				// for(int i=0;i<agents.Length;i++)
-				// 	agents[i].position = new Vector3(agentPositions[i].x, agentPositions[i].y, agentPositions[i].z);
-				StartCoroutine(StepCBS());
-			}
+		// if(Input.GetKeyDown(KeyCode.Return))
+		if(cbsComplete){
+			cbsComplete = false;
+			StartCoroutine(StepCBS());
 		}
 	}
 
@@ -47,8 +38,7 @@ public class CBS : MonoBehaviour{
 			grid.ResetNodes();
 			// find min path with the given constraints
 			List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, constraints[i]);
-			// if(path.Count==0)
-			// 	return null;
+
 			solution.Add(path);
 		}
 		return solution;
@@ -78,6 +68,7 @@ public class CBS : MonoBehaviour{
 	IEnumerator StepCBS(){
 		grid.paths = null;
 
+		grid.resetTargets();
 		List<CTNode> OPEN = new List<CTNode> ();
 		List<Conflict> curConflicts =  new List<Conflict>();
 		
@@ -88,6 +79,9 @@ public class CBS : MonoBehaviour{
 		}
 
 		List<List<Node>> solution = GetSolution(emptyConstraints);
+		for(int i=0;i<solution.Count;i++){
+			// Debug.Log(solution[i].Count);
+		}
 		int cost = GetSolutionCost(solution);
 		
 		CTNode curNode = new CTNode(emptyConstraints, solution, cost);
@@ -102,12 +96,11 @@ public class CBS : MonoBehaviour{
 
 			curConflicts = GetConflicts(curNode.solution);
 
-			// yield return new WaitForSeconds(1.0f); // show for a few seconds
 			yield return 0;
-			Debug.Log(curNode.cost);
+			// Debug.Log(curNode.cost);
 			if(curConflicts.Count == 0){
 				// solution found
-				Debug.Log("Solution Found!");
+				// Debug.Log("Solution Found!");
 				break;
 			}
 
@@ -124,10 +117,6 @@ public class CBS : MonoBehaviour{
 						newConstraints[agentID].Add(new State(conflict.node, conflict.time));
 
 						List<List<Node>> newSolution = GetSolution(newConstraints);
-						if(newSolution==null){
-							Debug.Log("No solution found!");
-							yield break;
-						}
 
 						int newCost = GetSolutionCost(newSolution);
 						CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
@@ -142,37 +131,41 @@ public class CBS : MonoBehaviour{
 
 	IEnumerator FlyDrones(){
 		int minTimeStep = int.MaxValue;
-		int MAXSTEPS = 30;
-		float speed = grid.nodeRadius*130/MAXSTEPS;
+		int MAXSTEPS = 10;
+		float speed = grid.nodeRadius*100/MAXSTEPS;
 
-		foreach(List<Node> path in grid.paths)
+		foreach(List<Node> path in grid.paths){
+			// Debug.Log(path.Count);
 			if(path.Count != 0 && path.Count < minTimeStep) 
 				minTimeStep = path.Count;
+		}
 
 		if(minTimeStep == int.MaxValue){
 			Debug.Log("Deadlock!");
 			yield break;
-		} 
+		}
 
 		// for each time step
 		for(int t=0;t<minTimeStep;t++){ 
 			// for each agent
-			for(int step=0;step<MAXSTEPS;step++){
-				for(int i=0;i<nAgents;i++)
-					if(t < grid.paths[i].Count) 
-						agents[i].position = Vector3.MoveTowards(agents[i].position, grid.paths[i][t].worldPosition, speed*Time.deltaTime);
-				yield return 0;
-			}
+			if(t>0)
+				for(int step=0;step<MAXSTEPS;step++){
+					for(int i=0;i<nAgents;i++)
+						if(t < grid.paths[i].Count)
+							agents[i].position = Vector3.MoveTowards(agents[i].position, grid.paths[i][t].worldPosition, speed*Time.deltaTime);
+					yield return 0;
+				}
 
 			for(int i=0;i<nAgents;i++){
 				if(t < grid.paths[i].Count)
 					agents[i].position = grid.paths[i][t].worldPosition;
-				if(t == grid.paths[i].Count-1){
+				if(grid.paths[i].Count!=0 && t == grid.paths[i].Count-1){
 					// generate new node
-					Vector3 newNodePos = grid.GetRandomNode().worldPosition;
+					Vector3 newNodePos = grid.GetRandomNode(agents).worldPosition;
 					targets[i].position = new Vector3(newNodePos.x, newNodePos.y, newNodePos.z);
 				}
 			}
+			yield return 0;
 		}
 		
 		cbsComplete = true;
@@ -199,7 +192,7 @@ public class CBS : MonoBehaviour{
 							List<int> curAgents = new List<int> ();
 							curAgents.Add(i);
 							curAgents.Add(j);
-							conflicts.Add(new Conflict(curAgents, paths[i][t], t+1));
+							conflicts.Add(new Conflict(curAgents, paths[i][t], t));
 							conflictFound = true;
 						}
 
@@ -213,11 +206,11 @@ public class CBS : MonoBehaviour{
 							if(paths[i][t] == paths[j][t+1] && paths[i][t+1] == paths[j][t]){
 								List<int> curAgents = new List<int> ();
 								curAgents.Add(i);
-								conflicts.Add(new Conflict(curAgents, paths[i][t+1], t+2));
+								conflicts.Add(new Conflict(curAgents, paths[i][t+1], t+1));
 
 								curAgents = new List<int> ();
 								curAgents.Add(j);
-								conflicts.Add(new Conflict(curAgents, paths[j][t+1], t+2));
+								conflicts.Add(new Conflict(curAgents, paths[j][t+1], t+1));
 								conflictFound = true;
 							}
 						}
