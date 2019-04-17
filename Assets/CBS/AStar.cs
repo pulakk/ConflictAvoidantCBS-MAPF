@@ -36,8 +36,6 @@ public class AStar{
 		// get the nodes of the agent and target
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
-
-		targetNode.visible = true;
 		
 		/* open set contains 
 		the list of nodes to be visited*/

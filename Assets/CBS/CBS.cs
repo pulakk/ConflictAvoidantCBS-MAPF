@@ -19,13 +19,18 @@ public class CBS : MonoBehaviour{
 		nAgents = agents.Length<targets.Length?agents.Length:targets.Length;
 		nAgents = nAgents<maxAgents?nAgents:maxAgents; // less than max agents
 
+		for(int i = nAgents; i < agents.Length; i++)
+			agents[i].gameObject.SetActive(false);
+
+		for(int i = nAgents; i < targets.Length; i++)
+			targets[i].gameObject.SetActive(false);
+
 		// get the whole grid layout
 		grid = GetComponent<Grid> ();
 	}
 
 	void Update() {
 		// main algorithm
-		// if(Input.GetKeyDown(KeyCode.Return))
 		if(cbsComplete){
 			cbsComplete = false;
 			StartCoroutine(StepCBS());
@@ -67,25 +72,19 @@ public class CBS : MonoBehaviour{
 
 	IEnumerator StepCBS(){
 		grid.paths = null;
-
-		grid.resetTargets();
 		List<CTNode> OPEN = new List<CTNode> ();
 		List<Conflict> curConflicts =  new List<Conflict>();
 		
 		/* empty constraints */
 		List<State>[] emptyConstraints = new List<State> [nAgents];
-		for(int i=0;i<emptyConstraints.Length;i++){
+		for(int i=0;i<emptyConstraints.Length;i++)
 			emptyConstraints[i] = new List<State>();
-		}
 
 		List<List<Node>> solution = GetSolution(emptyConstraints);
-		for(int i=0;i<solution.Count;i++){
-			// Debug.Log(solution[i].Count);
-		}
 		int cost = GetSolutionCost(solution);
 		
+		/* add root node */
 		CTNode curNode = new CTNode(emptyConstraints, solution, cost);
-
 		OPEN.Add(curNode);
 
 		while(OPEN.Count > 0){
@@ -93,16 +92,11 @@ public class CBS : MonoBehaviour{
 			OPEN.Remove(curNode);
 
 			grid.paths = curNode.solution;
-
 			curConflicts = GetConflicts(curNode.solution);
 
 			yield return 0;
-			// Debug.Log(curNode.cost);
-			if(curConflicts.Count == 0){
-				// solution found
-				// Debug.Log("Solution Found!");
+			if(curConflicts.Count == 0)
 				break;
-			}
 
 			else if(curConflicts.Count > 0){
 				foreach(Conflict conflict in curConflicts){
@@ -116,9 +110,11 @@ public class CBS : MonoBehaviour{
 						// add new constraint
 						newConstraints[agentID].Add(new State(conflict.node, conflict.time));
 
+						// solve with new constraints
 						List<List<Node>> newSolution = GetSolution(newConstraints);
-
 						int newCost = GetSolutionCost(newSolution);
+
+						// add new node
 						CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
 						OPEN.Add(newNode);
 					}
@@ -134,11 +130,9 @@ public class CBS : MonoBehaviour{
 		int MAXSTEPS = 10;
 		float speed = grid.nodeRadius*100/MAXSTEPS;
 
-		foreach(List<Node> path in grid.paths){
-			// Debug.Log(path.Count);
+		foreach(List<Node> path in grid.paths)
 			if(path.Count != 0 && path.Count < minTimeStep) 
 				minTimeStep = path.Count;
-		}
 
 		if(minTimeStep == int.MaxValue){
 			Debug.Log("Deadlock!");
@@ -159,9 +153,10 @@ public class CBS : MonoBehaviour{
 			for(int i=0;i<nAgents;i++){
 				if(t < grid.paths[i].Count)
 					agents[i].position = grid.paths[i][t].worldPosition;
+				
+				// change target location to new random node
 				if(grid.paths[i].Count!=0 && t == grid.paths[i].Count-1){
-					// generate new node
-					Vector3 newNodePos = grid.GetRandomNode(agents).worldPosition;
+					Vector3 newNodePos = grid.GetRandomNode().worldPosition;
 					targets[i].position = new Vector3(newNodePos.x, newNodePos.y, newNodePos.z);
 				}
 			}

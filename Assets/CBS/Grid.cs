@@ -15,19 +15,12 @@ public class Grid : MonoBehaviour {
 	int gridSizeX, gridSizeY;
 	public List<Color> colors = new List<Color> ();
 
-	bool checkFreeNode(Transform[] agents, int col, int row){
-		// foreach(Transform agent in agents){
-		// 	if(grid[col, row] == NodeFromWorldPoint(agent.position))
-		// 		return false;
-		// }
-		return grid[col,row].walkable;
-	}
 
-	public Node GetRandomNode(Transform[] agents){
+	public Node GetRandomNode(){
 		for(int i=0;i<10;i++){
 			int col = Random.Range(0, grid.GetLength(0));
 			int row = Random.Range(0, grid.GetLength(1));
-			if(checkFreeNode(agents, col, row))
+			if(grid[col,row].walkable)
 				return grid[col,row];
 		}
 		return grid[0,0];
@@ -42,11 +35,6 @@ public class Grid : MonoBehaviour {
 			n.time = 0;
 			n.parent = null;
 		}
-	}
-
-	public void resetTargets(){
-		foreach(Node n in grid)
-			n.visible = false;
 	}
 
 	void AddColors(){
@@ -114,28 +102,23 @@ public class Grid : MonoBehaviour {
 	}
 
 	public List<List<Node>> paths = new List<List<Node>>();
-
 	void OnDrawGizmos() {
 		Gizmos.DrawWireCube(transform.position,new Vector3(gridWorldSize.x,1,gridWorldSize.y));
 
 		if (grid != null) {
 			foreach (Node n in grid) {
-				if(n.visible){
-					Gizmos.color = Color.red;
+				Gizmos.color = (n.walkable)?Color.white:Color.white;
+				bool _is_path = false;
+				if(paths!=null)
+					foreach(List<Node> path in paths) 
+						if (path.Contains (n)) {
+							Gizmos.color = colors[paths.FindIndex(tmp_path=>tmp_path==path)%5];
+							_is_path = true;
+						}
+					
+				if(_is_path || !n.walkable)
 					Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter-.1f));
-				}else{
-					Gizmos.color = (n.walkable)?Color.white:Color.white;
-					bool _is_path = false;
-					if(paths!=null)
-						foreach(List<Node> path in paths) 
-							if (path.Contains (n)) {
-								Gizmos.color = colors[paths.FindIndex(tmp_path=>tmp_path==path)%5];
-								_is_path = true;
-							}
-						
-					if(_is_path || !n.walkable)
-						Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter-.1f));
-				}
+				
 			}
 		}
 	}
