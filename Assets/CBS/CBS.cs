@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
 
 public class CBS : MonoBehaviour{
 
@@ -10,8 +11,12 @@ public class CBS : MonoBehaviour{
 	// Vector3[] agentPositions;
 
 	private bool cbsComplete=true;
+
 	public int maxAgents;
 	int nAgents;
+
+	public bool testing;
+    string logPath = "Assets/Resources/log.txt";
 
 	Grid grid;
 
@@ -27,6 +32,13 @@ public class CBS : MonoBehaviour{
 
 		// get the whole grid layout
 		grid = GetComponent<Grid> ();
+
+	}
+
+	void Log(string str){
+        StreamWriter writer = new StreamWriter(logPath, true);
+		writer.WriteLine(str);
+        writer.Close();
 	}
 
 	void Update() {
@@ -87,16 +99,24 @@ public class CBS : MonoBehaviour{
 		CTNode curNode = new CTNode(emptyConstraints, solution, cost);
 		OPEN.Add(curNode);
 
+		int nodesTraversed = 0;
 		while(OPEN.Count > 0){
+			nodesTraversed++;
+
 			curNode = GetMinCostNode(OPEN);
 			OPEN.Remove(curNode);
 
 			grid.paths = curNode.solution;
 			curConflicts = GetConflicts(curNode.solution);
 
+			// Debug.Log(curNode.cost);
 			yield return 0;
-			if(curConflicts.Count == 0)
+			if(curConflicts.Count == 0){
+				Debug.Log("final->");
+				Debug.Log(curNode.cost);
 				break;
+			}
+
 
 			else if(curConflicts.Count > 0){
 				foreach(Conflict conflict in curConflicts){
@@ -122,6 +142,7 @@ public class CBS : MonoBehaviour{
 			}
 		}
 
+		if(testing) Log(nodesTraversed.ToString()+", "+curNode.cost);
 		StartCoroutine(FlyDrones());
 	}
 
@@ -131,7 +152,7 @@ public class CBS : MonoBehaviour{
 		float speed = grid.nodeRadius*100/MAXSTEPS;
 
 		foreach(List<Node> path in grid.paths)
-			if(path.Count != 0 && path.Count < minTimeStep) 
+			if(path.Count != 1 && path.Count < minTimeStep) 
 				minTimeStep = path.Count;
 
 		if(minTimeStep == int.MaxValue){
@@ -142,7 +163,7 @@ public class CBS : MonoBehaviour{
 		// for each time step
 		for(int t=0;t<minTimeStep;t++){ 
 			// for each agent
-			if(t>0)
+			if(!testing && t>0)
 				for(int step=0;step<MAXSTEPS;step++){
 					for(int i=0;i<nAgents;i++)
 						if(t < grid.paths[i].Count)
@@ -174,42 +195,65 @@ public class CBS : MonoBehaviour{
 
 		for(int t=0;!conflictFound;t++,agentLeft=false){
 			for(int i=0;i<paths.Count && !conflictFound;i++){
-				for(int j=0;j<paths.Count && !conflictFound;j++){
-					if(i!=j && t < paths[i].Count && t < paths[j].Count){
-						/* CASE 1 
-							0: A B C F
-							1: D E C G
-								   |
-								   ------ conflict (same node at same time)
-						
-						 */
-						if(paths[i][t] == paths[j][t]){
-							List<int> curAgents = new List<int> ();
-							curAgents.Add(i);
-							curAgents.Add(j);
-							conflicts.Add(new Conflict(curAgents, paths[i][t], t));
-							conflictFound = true;
-						}
+				for(int j=i+1;j<paths.Count && !conflictFound;j++){
+					if(i!=j){
 
-						/* CASE 2
-							0: A B C E
-							1: D C B F
-								 | |
-								 ------- conflict (crossing each other)
-						 */
-						if(t+1 < paths[i].Count && t+1 < paths[j].Count){
-							if(paths[i][t] == paths[j][t+1] && paths[i][t+1] == paths[j][t]){
+						if(t < paths[i].Count && t < paths[j].Count){
+							agentLeft = true;
+
+							/* CASE 1 
+								0: A B C F
+								1: D E C G
+									|
+									------ conflict (same node at same time)
+							
+							*/
+							if(paths[i][t] == paths[j][t]){
 								List<int> curAgents = new List<int> ();
 								curAgents.Add(i);
-								conflicts.Add(new Conflict(curAgents, paths[i][t+1], t+1));
-
-								curAgents = new List<int> ();
 								curAgents.Add(j);
-								conflicts.Add(new Conflict(curAgents, paths[j][t+1], t+1));
+								conflicts.Add(new Conflict(curAgents, paths[i][t], t));
 								conflictFound = true;
+								continue;
+							}
+
+							/* CASE 2
+								0: A B C E
+								1: D C B F
+									| |
+									------- conflict (crossing each other)
+							*/
+							if(t+1 < paths[i].Count && t+1 < paths[j].Count){
+								if(paths[i][t] == paths[j][t+1] && paths[i][t+1] == paths[j][t]){
+									List<int> curAgents = new List<int> ();
+									curAgents.Add(i);
+									conflicts.Add(new Conflict(curAgents, paths[i][t+1], t+1));
+
+									curAgents = new List<int> ();
+									curAgents.Add(j);
+									conflicts.Add(new Conflict(curAgents, paths[j][t+1], t+1));
+									conflictFound = true;
+									continue;
+								}
 							}
 						}
-						agentLeft = true;
+
+						// check stationary object collision
+						if(t>0 && t<paths[j].Count && paths[i].Count == 1 && paths[j][t] == paths[i][0]){
+							List<int> curAgents = new List<int> ();
+							curAgents.Add(j);
+							conflicts.Add(new Conflict(curAgents, paths[i][0], t));
+							conflictFound = true;
+							continue;
+						}
+						if(t>0 && t<paths[i].Count && paths[j].Count ==1 && paths[i][t] == paths[j][0]){
+							List<int> curAgents = new List<int> ();
+							curAgents.Add(i);
+							conflicts.Add(new Conflict(curAgents, paths[j][0], t));
+							conflictFound = true;
+							continue;
+						}
+
 					}
 				}
 			}

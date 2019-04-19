@@ -46,6 +46,7 @@ public class Grid : MonoBehaviour {
 	}
 
 	void Awake() {
+		Random.seed = 1024;
 		AddColors();
 		
 		nodeDiameter = nodeRadius*2;
@@ -116,7 +117,7 @@ public class Grid : MonoBehaviour {
 							_is_path = true;
 						}
 					
-				if(_is_path || !n.walkable)
+				if(_is_path)
 					Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter-.1f));
 				
 			}

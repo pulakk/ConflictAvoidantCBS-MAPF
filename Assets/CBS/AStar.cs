@@ -20,19 +20,36 @@ public class AStar{
 	static Node getMinCostNode(List<Node> nodes){
 		Node node = nodes[0];
 		for (int i = 1; i < nodes.Count; i ++) {
-			if (nodes[i].fCost <= node.fCost) {
-				if (nodes[i].hCost < node.hCost)
-					node = nodes[i];
-			}
+			if(nodes[i].fCost < node.fCost)
+				node = nodes[i];
+
+			/* New heuristic based 
+			on constraint avoidance */
+			// if (nodes[i].fCost == node.fCost) 
+			// 	if(GetVCost(nodes[i], solution) < GetVCost(node, solution))
+			// 		node = nodes[i];
+
+			/* Original heuristic */
+			if (nodes[i].fCost == node.fCost) 
+				if (nodes[i].hCost < node.hCost) node = nodes[i];
+			
 		}
 
 		return node;
 	}
 
+	
+	// static int GetVCost(Node n, List<List<Node>> solution){
+	// 	int vcost = 0;
+	// 	foreach(List<Node> path in solution)
+	// 		if(n.time < path.Count && path[n.time] == n)
+	// 				vcost++;
+	// 	return vcost;
+	// }
+
 	/* Find the minimum path 
 	while obeying the constraints */
 	static public List<Node> FindMinPath(Vector3 startPos, Vector3 targetPos, Grid grid, List<State> constraints) {
-		List<Node> path = new List<Node> ();
 		// get the nodes of the agent and target
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
@@ -58,8 +75,7 @@ public class AStar{
 
 			/* if target node is found */
 			if (node == targetNode) {
-				path = RetracePath(startNode,targetNode);
-				break;
+				return RetracePath(startNode,targetNode);
 			}
 
 			foreach (Node neighbour in grid.GetNeighbours(node)) {
@@ -95,6 +111,8 @@ public class AStar{
 			}
 		}
 
+		List<Node> path = new List<Node> ();
+		path.Add(startNode);
 		return path;
 	}
 
