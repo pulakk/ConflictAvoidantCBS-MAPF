@@ -3629,7 +3629,7 @@ MonoBehaviour:
   - {fileID: 1204585487}
   - {fileID: 956434291}
   maxAgents: 15
-  testing: 0
+  testing: 1
 --- !u!114 &1538713199
 MonoBehaviour:
   m_ObjectHideFlags: 0

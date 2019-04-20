@@ -54,7 +54,7 @@ public class CBS : MonoBehaviour{
 		for(int i = 0; i <constraints.Length; i++){
 			grid.ResetNodes();
 			// find min path with the given constraints
-			List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, constraints[i]);
+			List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, constraints[i], solution);
 
 			solution.Add(path);
 		}

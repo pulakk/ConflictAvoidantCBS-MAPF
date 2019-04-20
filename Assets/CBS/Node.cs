@@ -11,6 +11,7 @@ public class Node {
 
 	public int hCost;
 	public int gCost;
+	public int vcost;
 	public Node parent = null;
 	public int time=0;
 	

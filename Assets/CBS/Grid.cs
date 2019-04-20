@@ -117,7 +117,7 @@ public class Grid : MonoBehaviour {
 							_is_path = true;
 						}
 					
-				if(_is_path)
+				if(_is_path || !n.walkable)
 					Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter-.1f));
 				
 			}

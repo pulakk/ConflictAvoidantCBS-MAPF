@@ -25,13 +25,13 @@ public class AStar{
 
 			/* New heuristic based 
 			on constraint avoidance */
-			// if (nodes[i].fCost == node.fCost) 
-			// 	if(GetVCost(nodes[i], solution) < GetVCost(node, solution))
-			// 		node = nodes[i];
+			if (nodes[i].fCost == node.fCost) 
+				if(nodes[i].vcost < node.vcost)
+					node = nodes[i];
 
 			/* Original heuristic */
-			if (nodes[i].fCost == node.fCost) 
-				if (nodes[i].hCost < node.hCost) node = nodes[i];
+			// if (nodes[i].fCost == node.fCost) 
+			// 	if (nodes[i].hCost < node.hCost) node = nodes[i];
 			
 		}
 
@@ -39,17 +39,17 @@ public class AStar{
 	}
 
 	
-	// static int GetVCost(Node n, List<List<Node>> solution){
-	// 	int vcost = 0;
-	// 	foreach(List<Node> path in solution)
-	// 		if(n.time < path.Count && path[n.time] == n)
-	// 				vcost++;
-	// 	return vcost;
-	// }
+	static int GetVCost(Node n, List<List<Node>> solution){
+		int vcost = 0;
+		foreach(List<Node> path in solution)
+			if(n.time < path.Count && path[n.time] == n)
+					vcost++;
+		return vcost;
+	}
 
 	/* Find the minimum path 
 	while obeying the constraints */
-	static public List<Node> FindMinPath(Vector3 startPos, Vector3 targetPos, Grid grid, List<State> constraints) {
+	static public List<Node> FindMinPath(Vector3 startPos, Vector3 targetPos, Grid grid, List<State> constraints, List<List<Node>> solution) {
 		// get the nodes of the agent and target
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
@@ -104,6 +104,9 @@ public class AStar{
 					/* main path assign part */
 					neighbour.parent = node;
 					neighbour.time = neighbour.parent.time+1;
+
+					/* updating v cost */
+					neighbour.vcost = neighbour.parent.vcost + GetVCost(neighbour, solution);
 
 					if (!openSet.Contains(neighbour))
 						openSet.Add(neighbour);
