@@ -16,6 +16,7 @@ public class CBS : MonoBehaviour{
 	int nAgents;
 
 	public bool testing;
+	public bool logTestResults;
     string logdir = "Assets/Resources/";
 
 	Grid grid;
@@ -54,20 +55,36 @@ public class CBS : MonoBehaviour{
         	writer = new StreamWriter(logdir+"VH.txt", true);
 		else
         	writer = new StreamWriter(logdir+"N.txt", true);
-		// writer.WriteLine(str);
+		writer.WriteLine(str);
         writer.Close();
 	}
 
-	List<List<Node>> GetSolution(List<State>[] constraints){
-		List<List<Node>> solution = new List<List<Node>> ();
-		for(int i = 0; i <constraints.Length; i++){
-			grid.ResetNodes();
-			// find min path with the given constraints
-			List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, constraints[i], solution);
+	/* 	Takes a list of new 
+		constraints, previous 
+		solution and the new 
+		constrained agent */
+	List<List<Node>> GetSolution(List<State>[] cstr, List<List<Node>> prevSoln=null, int cstrAgent=-1){
+		List<List<Node>> soln = new List<List<Node>> ();
+		List<Node> cstrPath = new List<Node>();
 
-			solution.Add(path);
+		// solve constraint agent first
+		if(cstrAgent!=-1){
+			cstrPath = AStar.FindMinPath(agents[cstrAgent].position, targets[cstrAgent].position, grid, cstr[cstrAgent], prevSoln, cstrAgent);
+			prevSoln[cstrAgent] = cstrPath;
 		}
-		return solution;
+
+		// solve the rest of the agents
+		for(int i = 0; i <cstr.Length; i++){
+			if(cstrAgent==-1 || i!=cstrAgent){
+				List<Node> path = AStar.FindMinPath (agents[i].position, targets[i].position, grid, cstr[i], prevSoln, i);
+				if(prevSoln!=null)prevSoln[i] = path;
+				soln.Add(path);
+			}
+			if(cstrAgent!=-1 && i==cstrAgent)
+				soln.Add(cstrPath);
+		}
+				
+		return soln;
 	}
 
 	int GetSolutionCost(List<List<Node>> paths){
@@ -101,15 +118,15 @@ public class CBS : MonoBehaviour{
 		List<Conflict> curConflicts =  new List<Conflict>();
 		
 		/* empty constraints */
-		List<State>[] emptyConstraints = new List<State> [nAgents];
-		for(int i=0;i<emptyConstraints.Length;i++)
-			emptyConstraints[i] = new List<State>();
+		List<State>[] emptyCstr = new List<State> [nAgents];
+		for(int i=0;i<emptyCstr.Length;i++)
+			emptyCstr[i] = new List<State>();
 
-		List<List<Node>> solution = GetSolution(emptyConstraints);
-		int cost = GetSolutionCost(solution);
+		List<List<Node>> soln = GetSolution(emptyCstr);
+		int cost = GetSolutionCost(soln);
 		
 		/* add root node */
-		CTNode curNode = new CTNode(emptyConstraints, solution, cost);
+		CTNode curNode = new CTNode(emptyCstr, soln, cost);
 		OPEN.Add(curNode);
 
 		int nodesTraversed = 0;
@@ -119,8 +136,8 @@ public class CBS : MonoBehaviour{
 			curNode = GetMinCostNode(OPEN);
 			OPEN.Remove(curNode);
 
-			grid.paths = curNode.solution;
-			curConflicts = GetConflicts(curNode.solution);
+			grid.paths = curNode.soln;
+			curConflicts = GetConflicts(curNode.soln);
 
 			// Debug.Log(curNode.cost);
 			yield return 0;
@@ -136,26 +153,25 @@ public class CBS : MonoBehaviour{
 					foreach(int agentID in conflict.agents){
 						// copy constraints
 						List<State>[] newConstraints = new List<State>[nAgents];
-						for(int i=0;i<newConstraints.Length;i++){
-							newConstraints[i] = new List<State>(curNode.constraints[i]);
-						}
+						for(int i=0;i<newConstraints.Length;i++)
+							newConstraints[i] = new List<State>(curNode.cstr[i]);
 
 						// add new constraint
 						newConstraints[agentID].Add(new State(conflict.node, conflict.time));
 
 						// solve with new constraints
-						List<List<Node>> newSolution = GetSolution(newConstraints);
-						int newCost = GetSolutionCost(newSolution);
+						List<List<Node>> newSoln = GetSolution(newConstraints, curNode.soln, agentID);
+						int newCost = GetSolutionCost(newSoln);
 
 						// add new node
-						CTNode newNode = new CTNode(newConstraints, newSolution, newCost);
+						CTNode newNode = new CTNode(newConstraints, newSoln, newCost);
 						OPEN.Add(newNode);
 					}
 				}
 			}
 		}
 
-		if(testing) Log(nodesTraversed.ToString()+", "+curNode.cost);
+		if(testing && logTestResults) Log(nodesTraversed.ToString()+", "+curNode.cost);
 		if(AStar.Mode == AStar.MODE_VH){
 			AStar.Mode = AStar.MODE_N;
 			StartCoroutine(StepCBS());

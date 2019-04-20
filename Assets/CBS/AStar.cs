@@ -38,25 +38,31 @@ public class AStar{
 				if (nodes[i].fCost == node.fCost) 
 					if (nodes[i].hCost < node.hCost) node = nodes[i];
 			}
-
-			
 		}
 
 		return node;
 	}
 
 	
-	static int GetVCost(Node n, List<List<Node>> solution){
+	static int GetVCost(Node n, List<List<Node>> soln, int curAgent){
+		if(soln==null || curAgent<0) return 0;
 		int vcost = 0;
-		foreach(List<Node> path in solution)
-			if(n.time < path.Count && path[n.time] == n)
-					vcost++;
+		for(int i=0;i<soln.Count;i++){
+			if(i!=curAgent){
+				// check conflicts for all other agents
+				List<Node> path = soln[i];
+				if(n.time < path.Count && path[n.time] == n)
+						vcost++;
+			}
+		}
 		return vcost;
 	}
 
 	/* Find the minimum path 
-	while obeying the constraints */
-	static public List<Node> FindMinPath(Vector3 startPos, Vector3 targetPos, Grid grid, List<State> constraints, List<List<Node>> solution) {
+	while obeying the constraints (cstr) */
+	static public List<Node> FindMinPath(Vector3 startPos, Vector3 targetPos, Grid grid, List<State> cstr, List<List<Node>> prevSoln, int curAgent) {
+		grid.ResetNodes();
+
 		// get the nodes of the agent and target
 		Node startNode = grid.NodeFromWorldPoint(startPos);
 		Node targetNode = grid.NodeFromWorldPoint(targetPos);
@@ -87,7 +93,7 @@ public class AStar{
 
 			foreach (Node neighbour in grid.GetNeighbours(node)) {
 				/* check constraint match */
-				if(constraints.Exists(
+				if(cstr.Exists(
 					state => state.node.gridX == neighbour.gridX && state.node.gridY == neighbour.gridY && state.time == node.time + 1
 				)) continue;
 
@@ -113,7 +119,7 @@ public class AStar{
 					neighbour.time = neighbour.parent.time+1;
 
 					/* updating v cost */
-					neighbour.vcost = neighbour.parent.vcost + GetVCost(neighbour, solution);
+					neighbour.vcost = neighbour.parent.vcost + GetVCost(neighbour, prevSoln, curAgent);
 
 					if (!openSet.Contains(neighbour))
 						openSet.Add(neighbour);

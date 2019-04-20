@@ -54,18 +54,18 @@ public class Conflict{
 
 /* Constraint tree node */
 public class CTNode{
-	public List<State>[] constraints;
+	public List<State>[] cstr; // constraints
 	public int cost;
-	public List<List<Node>> solution = new List<List<Node>>();
+	public List<List<Node>> soln = new List<List<Node>>(); // solution
 
 	public CTNode(List<State>[] _constraints, List<List<Node>> _solution, int _cost){
-		constraints = new List<State>[_constraints.Length];
-		for(int i=0;i<constraints.Length;i++){
-			constraints[i] = new List<State>(_constraints[i]);
+		cstr = new List<State>[_constraints.Length];
+		for(int i=0;i<cstr.Length;i++){
+			cstr[i] = new List<State>(_constraints[i]);
 		}
 
 		foreach(List<Node> path in _solution)
-			solution.Add(new List<Node> (path));
+			soln.Add(new List<Node> (path));
 
 		cost = _cost;
 	}
@@ -73,8 +73,8 @@ public class CTNode{
 
 	public int GetConstraintsCount(){
 		int count = 0;
-		for(int i=0;i<constraints.Length;i++){
-			count+= constraints[i].Count;
+		for(int i=0;i<cstr.Length;i++){
+			count+= cstr[i].Count;
 		}
 		return count;
 	}
