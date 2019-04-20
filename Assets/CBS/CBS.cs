@@ -16,9 +16,10 @@ public class CBS : MonoBehaviour{
 	int nAgents;
 
 	public bool testing;
-    string logPath = "Assets/Resources/log.txt";
+    string logdir = "Assets/Resources/";
 
 	Grid grid;
+
 
 	void Awake() {
 		nAgents = agents.Length<targets.Length?agents.Length:targets.Length;
@@ -35,18 +36,26 @@ public class CBS : MonoBehaviour{
 
 	}
 
-	void Log(string str){
-        StreamWriter writer = new StreamWriter(logPath, true);
-		writer.WriteLine(str);
-        writer.Close();
-	}
-
 	void Update() {
 		// main algorithm
 		if(cbsComplete){
 			cbsComplete = false;
+			if(testing)
+				AStar.Mode = AStar.MODE_VH;
+			else 
+				AStar.Mode = AStar.MODE_N;
 			StartCoroutine(StepCBS());
 		}
+	}
+
+	void Log(string str){
+		StreamWriter writer;
+		if(AStar.Mode == AStar.MODE_VH)
+        	writer = new StreamWriter(logdir+"VH.txt", true);
+		else
+        	writer = new StreamWriter(logdir+"N.txt", true);
+		// writer.WriteLine(str);
+        writer.Close();
 	}
 
 	List<List<Node>> GetSolution(List<State>[] constraints){
@@ -81,6 +90,10 @@ public class CBS : MonoBehaviour{
 
 		return node;
 	}
+
+
+
+
 
 	IEnumerator StepCBS(){
 		grid.paths = null;
@@ -143,7 +156,12 @@ public class CBS : MonoBehaviour{
 		}
 
 		if(testing) Log(nodesTraversed.ToString()+", "+curNode.cost);
-		StartCoroutine(FlyDrones());
+		if(AStar.Mode == AStar.MODE_VH){
+			AStar.Mode = AStar.MODE_N;
+			StartCoroutine(StepCBS());
+		}else if(AStar.Mode == AStar.MODE_N){
+			StartCoroutine(FlyDrones());
+		}
 	}
 
 	IEnumerator FlyDrones(){

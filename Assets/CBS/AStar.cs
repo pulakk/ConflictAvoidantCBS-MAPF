@@ -5,6 +5,10 @@ using System.Collections.Generic;
 // code by pulak
 
 public class AStar{
+	public const int MODE_VH = 0; // vcost heuristic mode
+	public const int MODE_N = 1; // normal mode
+
+	public static int Mode = MODE_VH;
 
 	static int GetDistance(Node nodeA, Node nodeB) {
 		int dstX = Mathf.Abs(nodeA.gridX - nodeB.gridX);
@@ -23,15 +27,18 @@ public class AStar{
 			if(nodes[i].fCost < node.fCost)
 				node = nodes[i];
 
-			/* New heuristic based 
-			on constraint avoidance */
-			if (nodes[i].fCost == node.fCost) 
-				if(nodes[i].vcost < node.vcost)
-					node = nodes[i];
+			if(Mode == MODE_VH){
+				/* New heuristic based 
+				on constraint avoidance */
+				if (nodes[i].fCost == node.fCost) 
+					if(nodes[i].vcost < node.vcost)
+						node = nodes[i];
+			}else if(Mode == MODE_N){
+				/* Original heuristic */
+				if (nodes[i].fCost == node.fCost) 
+					if (nodes[i].hCost < node.hCost) node = nodes[i];
+			}
 
-			/* Original heuristic */
-			// if (nodes[i].fCost == node.fCost) 
-			// 	if (nodes[i].hCost < node.hCost) node = nodes[i];
 			
 		}
 
