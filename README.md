@@ -1,6 +1,6 @@
 # Conflict Avoidant CBS 
 
-Implementation of CA-CBS (Conflict Avoidant CBS) which is an improvement to the original CBS (Conflict Based Search) algorithm.
+Implementation of CA-CBS (Conflict Avoidant CBS).
 
 
 ## Scene 
